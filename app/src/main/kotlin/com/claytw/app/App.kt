@@ -1,5 +1,7 @@
 package com.claytw.app
 
+import com.claytw.context.ApplicationContext
+
 fun main() {
-    print("hello world")
+    ApplicationContext(AppConfig::class)
 }
