@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DetektProjectConfiguration">
+    <enableFormatting>true</enableFormatting>
+    <pluginPaths>/opt/homebrew/Cellar/detekt/1.21.0/libexec/detekt-cli-1.21.0-all.jar</pluginPaths>
+  </component>
+</project>
