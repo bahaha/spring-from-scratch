@@ -3,8 +3,10 @@ package org.springframework.context
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.kotest.matchers.types.shouldNotBeSameInstanceAs
+import org.springframework.context.annotations.Autowired
 import org.springframework.context.annotations.Component
 import org.springframework.context.annotations.ComponentScan
 import org.springframework.context.annotations.Scope
@@ -14,11 +16,20 @@ import org.springframework.context.core.ScopeStrategy
 class ConfigWithDefaultScanRoot
 
 @Component
-class FooService
+class InjectMe
+
+@Component
+class FooService {
+    @Autowired("injectMe")
+    var dep: InjectMe? = null
+}
 
 @Component("barlarbarbarbar")
 @Scope(strategy = ScopeStrategy.Prototype)
-class BarService
+class BarService {
+    @Autowired
+    var injectMe: InjectMe? = null
+}
 
 @ComponentScan("dev.claycheng")
 class ConfigWithSpecificScanRoot
@@ -73,6 +84,18 @@ class ApplicationContextSpec : DescribeSpec({
 
                 val prototypeBean = context.getBean("barlarbarbarbar")
                 barServiceBean shouldNotBeSameInstanceAs prototypeBean
+            }
+        }
+
+        describe("with dependencies") {
+            it("singleton bean") {
+                val fooServiceBean = context.getBean("fooService") as FooService
+                fooServiceBean.dep shouldNotBe null
+            }
+
+            it("prototype bean") {
+                val barServiceBean = context.getBean("barlarbarbarbar") as BarService
+                barServiceBean.injectMe shouldNotBe null
             }
         }
     }

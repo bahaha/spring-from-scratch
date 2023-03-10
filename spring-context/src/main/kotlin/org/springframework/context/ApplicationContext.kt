@@ -1,5 +1,6 @@
 package org.springframework.context
 
+import org.springframework.context.annotations.Autowired
 import org.springframework.context.annotations.Component
 import org.springframework.context.annotations.ComponentScan
 import org.springframework.context.annotations.Scope
@@ -8,6 +9,9 @@ import org.springframework.context.core.ScopeStrategy
 import java.io.File
 import java.net.URLDecoder
 import kotlin.reflect.KClass
+import kotlin.reflect.KMutableProperty1
+import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.jvm.javaField
 import kotlin.streams.asStream
 
 class ApplicationContext<T : Any>(clazz: KClass<T>) {
@@ -68,7 +72,18 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
 
     private fun createBean(beanDefinition: BeanDefinition): Any {
         val clazz = beanDefinition.clazz
-        return clazz.constructors.first().call()
+        val instance = clazz.constructors.first().call()
+
+        val dependencies = clazz.declaredMemberProperties
+            .filterIsInstance<KMutableProperty1<Any, Any>>()
+            .filter { it.javaField?.annotations?.any { annotation -> annotation is Autowired } == true }
+
+        dependencies.forEach { dependency ->
+            val annotation = dependency.javaField?.getAnnotation(Autowired::class.java)
+            val beanName = annotation?.beanName?.takeIf { it.isNotBlank() } ?: dependency.name
+            dependency.setter.call(instance, getBean(beanName))
+        }
+        return instance
     }
 
     fun getBean(beanName: String): Any {
