@@ -13,10 +13,16 @@ import kotlin.streams.asStream
 class ApplicationContext<T : Any>(clazz: KClass<T>) {
     lateinit var scanRoot: String
     var cachedBeanDefinitions: Map<String, BeanDefinition> = emptyMap()
+    private val singletonDependenciesPool: MutableMap<String, Any> = mutableMapOf()
+
     private val classLoader = clazz.java.classLoader
 
     init {
-        this.scan(clazz)
+        scan(clazz)
+        val beans = cachedBeanDefinitions.values
+            .filter { it.scope == ScopeStrategy.Singleton }
+            .associate { it.beanName to createBean(it) }
+        singletonDependenciesPool.putAll(beans)
     }
 
     private fun scan(clazz: KClass<T>) {
@@ -53,10 +59,25 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
                     componentBean.getAnnotation(Component::class.java)?.beanName?.takeIf { it.isNotBlank() }
                         ?: componentBean.simpleName.replaceFirstChar { name -> name.lowercase() }
 
-                BeanDefinition(componentBean, scope, beanName)
+                BeanDefinition(componentBean.kotlin, scope, beanName)
             }
             .associateBy(BeanDefinition::beanName)
 
         this.cachedBeanDefinitions = beanDefinitions
+    }
+
+    private fun createBean(beanDefinition: BeanDefinition): Any {
+        val clazz = beanDefinition.clazz
+        return clazz.constructors.first().call()
+    }
+
+    fun getBean(beanName: String): Any {
+        val beanDefinition = cachedBeanDefinitions[beanName]
+            ?: throw NullPointerException("No bean definition found for bean name: $beanName")
+        return when (beanDefinition.scope) {
+            ScopeStrategy.Prototype -> createBean(beanDefinition)
+            ScopeStrategy.Singleton ->
+                singletonDependenciesPool.getOrPut(beanName) { createBean(beanDefinition) }
+        }
     }
 }
