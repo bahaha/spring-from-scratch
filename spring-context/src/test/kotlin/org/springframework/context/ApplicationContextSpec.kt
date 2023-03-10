@@ -21,14 +21,17 @@ class InjectMe
 @Component
 class FooService {
     @Autowired("injectMe")
-    var dep: InjectMe? = null
+    lateinit var dep: InjectMe
+
+    @Autowired
+    var nonExistingDep: InjectMe? = null
 }
 
 @Component("barlarbarbarbar")
 @Scope(strategy = ScopeStrategy.Prototype)
 class BarService {
     @Autowired
-    var injectMe: InjectMe? = null
+    lateinit var injectMe: InjectMe
 }
 
 @ComponentScan("dev.claycheng")
@@ -36,33 +39,31 @@ class ConfigWithSpecificScanRoot
 
 class ApplicationContextSpec : DescribeSpec({
 
+    val context = ApplicationContext(ConfigWithDefaultScanRoot::class)
     describe("should scan bean candidates with @ComponentScan annotation") {
         it("with specific path") {
-            val context = ApplicationContext(ConfigWithSpecificScanRoot::class)
-            context.scanRoot shouldBe "dev.claycheng"
+            val contextWithSpecificRoot = ApplicationContext(ConfigWithSpecificScanRoot::class)
+            contextWithSpecificRoot.scanRoot shouldBe "dev.claycheng"
         }
 
         it("without path, config class as the root to scan") {
-            val context = ApplicationContext(ConfigWithDefaultScanRoot::class)
             context.scanRoot shouldBe "org.springframework.context"
         }
     }
 
     it("should cache the bean definition of bean candidates to keep about the metadata of bean") {
-        val context = ApplicationContext(ConfigWithDefaultScanRoot::class)
-        context.cachedBeanDefinitions["fooService"]?.apply {
-            beanName shouldBe "fooService"
-            scope shouldBe ScopeStrategy.Singleton
+        context.cachedBeanDefinitions["fooService"]?.let {
+            it.beanName shouldBe "fooService"
+            it.scope shouldBe ScopeStrategy.Singleton
         }
 
-        context.cachedBeanDefinitions["barlarbarbarbar"]?.apply {
-            beanName shouldBe "barlarbarbarbar"
-            scope shouldBe ScopeStrategy.Prototype
+        context.cachedBeanDefinitions["barlarbarbarbar"]?.let {
+            it.beanName shouldBe "barlarbarbarbar"
+            it.scope shouldBe ScopeStrategy.Prototype
         }
     }
 
     describe("should get the singleton or prototype bean") {
-        val context = ApplicationContext(ConfigWithDefaultScanRoot::class)
         it("non existing bean") {
             shouldThrow<NullPointerException> {
                 context.getBean("non-existing-bean")
@@ -91,6 +92,7 @@ class ApplicationContextSpec : DescribeSpec({
             it("singleton bean") {
                 val fooServiceBean = context.getBean("fooService") as FooService
                 fooServiceBean.dep shouldNotBe null
+                fooServiceBean.nonExistingDep shouldBe null
             }
 
             it("prototype bean") {

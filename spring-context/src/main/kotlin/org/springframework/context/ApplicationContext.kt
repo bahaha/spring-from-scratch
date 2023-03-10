@@ -40,8 +40,10 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
             .map { URLDecoder.decode(it.file, Charsets.UTF_8) }
             .map { File(it) }
             .filter { it.isDirectory }
-            .flatMap { (it.listFiles()?.asSequence() ?: emptySequence()).asStream() }
-            .filter { it.isFile && it.extension == "class" }
+            .map { root ->
+                root.listFiles { file -> file.isFile && file.extension == "class" } ?: emptyArray()
+            }
+            .flatMap { it.asSequence().asStream() }
 
         val classNames = classFiles
             .map { it.absolutePath }
@@ -61,7 +63,7 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
                     ?: ScopeStrategy.Singleton
                 val beanName =
                     componentBean.getAnnotation(Component::class.java)?.beanName?.takeIf { it.isNotBlank() }
-                        ?: componentBean.simpleName.replaceFirstChar { name -> name.lowercase() }
+                        ?: componentBean.simpleName.replaceFirstChar { it.lowercase() }
 
                 BeanDefinition(componentBean.kotlin, scope, beanName)
             }
@@ -81,7 +83,10 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
         dependencies.forEach { dependency ->
             val annotation = dependency.javaField?.getAnnotation(Autowired::class.java)
             val beanName = annotation?.beanName?.takeIf { it.isNotBlank() } ?: dependency.name
-            dependency.setter.call(instance, getBean(beanName))
+            try {
+                dependency.setter.call(instance, getBean(beanName))
+            } catch (_: NullPointerException) {
+            }
         }
         return instance
     }
