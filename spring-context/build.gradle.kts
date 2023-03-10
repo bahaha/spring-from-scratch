@@ -16,9 +16,9 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
     implementation(kotlin("reflect"))
 
-    testImplementation("io.kotest:kotest-runner-junit5:${kotestVersion}")
-    testImplementation("io.kotest:kotest-assertions-core:${kotestVersion}")
-    testImplementation("io.kotest:kotest-property:${kotestVersion}")
+    testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
+    testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
+    testImplementation("io.kotest:kotest-property:$kotestVersion")
 }
 
 tasks.getByName<Test>("test") {
