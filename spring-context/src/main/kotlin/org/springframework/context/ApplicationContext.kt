@@ -6,11 +6,13 @@ import org.springframework.context.annotations.ComponentScan
 import org.springframework.context.annotations.Scope
 import org.springframework.context.core.BeanDefinition
 import org.springframework.context.core.ScopeStrategy
+import org.springframework.context.lifecycle.InitializingBean
 import java.io.File
 import java.net.URLDecoder
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaField
 import kotlin.streams.asStream
 
@@ -64,8 +66,9 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
                 val beanName =
                     componentBean.getAnnotation(Component::class.java)?.beanName?.takeIf { it.isNotBlank() }
                         ?: componentBean.simpleName.replaceFirstChar { it.lowercase() }
+                val isInitializingBean = componentBean.kotlin.isSubclassOf(InitializingBean::class)
 
-                BeanDefinition(componentBean.kotlin, scope, beanName)
+                BeanDefinition(componentBean.kotlin, scope, beanName, isInitializingBean)
             }
             .associateBy(BeanDefinition::beanName)
 
@@ -88,6 +91,8 @@ class ApplicationContext<T : Any>(clazz: KClass<T>) {
             } catch (_: NullPointerException) {
             }
         }
+
+        (instance as? InitializingBean)?.afterPropertiesSet()
         return instance
     }
 

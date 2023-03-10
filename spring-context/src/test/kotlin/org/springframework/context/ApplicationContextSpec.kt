@@ -11,6 +11,7 @@ import org.springframework.context.annotations.Component
 import org.springframework.context.annotations.ComponentScan
 import org.springframework.context.annotations.Scope
 import org.springframework.context.core.ScopeStrategy
+import org.springframework.context.lifecycle.InitializingBean
 
 @ComponentScan
 class ConfigWithDefaultScanRoot
@@ -19,12 +20,17 @@ class ConfigWithDefaultScanRoot
 class InjectMe
 
 @Component
-class FooService {
+class FooService : InitializingBean {
     @Autowired("injectMe")
     lateinit var dep: InjectMe
 
     @Autowired
     var nonExistingDep: InjectMe? = null
+    var hadDependenciesInjected = false
+
+    override fun afterPropertiesSet() {
+        this.hadDependenciesInjected = true
+    }
 }
 
 @Component("barlarbarbarbar")
@@ -32,6 +38,7 @@ class FooService {
 class BarService {
     @Autowired
     lateinit var injectMe: InjectMe
+    var hadInitializing = false
 }
 
 @ComponentScan("dev.claycheng")
@@ -99,6 +106,16 @@ class ApplicationContextSpec : DescribeSpec({
                 val barServiceBean = context.getBean("barlarbarbarbar") as BarService
                 barServiceBean.injectMe shouldNotBe null
             }
+        }
+    }
+
+    describe("life cycle") {
+        it("InitializingBean#afterPropertiesSet") {
+            val fooService = context.getBean("fooService") as FooService
+            fooService.hadDependenciesInjected shouldBe true
+
+            val barService = context.getBean("barlarbarbarbar") as BarService
+            barService.hadInitializing shouldBe false
         }
     }
 })

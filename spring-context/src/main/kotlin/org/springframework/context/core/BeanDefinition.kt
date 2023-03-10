@@ -6,4 +6,5 @@ data class BeanDefinition(
     val clazz: KClass<*>,
     val scope: ScopeStrategy,
     val beanName: String,
+    val isInitializingBean: Boolean,
 )
